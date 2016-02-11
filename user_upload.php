@@ -1,11 +1,5 @@
 <?php
 
-class user {
-	var $name;
-	var $surname;
-	var $email;
-}
-
 $users = array();
 
 do {
@@ -58,7 +52,24 @@ function createTable() {
 }
 
 function dryRun() {
-	echo "file name\n";
+	$myFile = fopen("./users.csv", "r") or die("Unable to open file.");
+	while (!feof($myFile)) {
+		$row = fgets($myFile);
+		global $users;
+		$users[] = explode(",", trim($row));
+	}
+	fclose($myFile);
+	
+	for($i = 0; $i < count($users); $i++) {
+		echo ucwords(strtolower($users[$i][0]));
+		echo ucwords(strtolower($users[$i][1]));
+		if (preg_match("/([\D]+\@{1}[\w]+\.{1}[\w]+)/" ,strtolower($users[$i][2]))) {
+			echo strtolower($users[$i][2]) . "\n";
+		} else {
+			fwrite ( STDOUT, "\n" . $users[$i][2] . " is not a valid email address.\n");
+		}
+			
+	}
 }
 
 function MySQLUsername() {
