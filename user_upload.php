@@ -1,4 +1,13 @@
 <?php
+
+class user {
+	var $name;
+	var $surname;
+	var $email;
+}
+
+$users = array();
+
 do {
 	fwrite ( STDOUT, "Enter a command(e to exit; --help for help): " );
 	
@@ -26,13 +35,22 @@ do {
 		case "--help" :
 			help ();
 			break;
+		case "e" : 
+			break;
 		default :
 			echo "Undefined command, please enter again.\n";
 	}
 } while ( $input != "e" );
 
 function showFileName() {
-	echo "file name\n";
+	$myFile = fopen("./users.csv", "r") or die("Unable to open file.");
+	while (!feof($myFile)) {
+		$row = fgets($myFile);
+		global $users;
+		$users[] = explode(",", $row);
+	}
+	print_r($users);
+	fclose($myFile);
 }
 
 function createTable() {
@@ -56,7 +74,12 @@ function MySQLHost() {
 }
 
 function help() {
-	echo "file name\n";
+	echo "-- file: this is the name of the CSV to be parsed\n";
+	echo "--create_table: this will cause the MySQL users table to be built (and no further action will be taken)\n";
+	echo "--dry_run: this will be used with the -- file directive in the instance that we want to run the script but not insert into the DB. All other functions will be executed, but the database won't be altered.\n";
+	echo "-u: MySQL username\n";
+	echo "-p: MySQL password\n";
+	echo "-h: MySQL host\n";
 }
 
 ?>
