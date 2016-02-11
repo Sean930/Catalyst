@@ -3,6 +3,7 @@ $users = array ();
 $usr;
 $pwd;
 $host;
+$con;
 
 do {
 	fwrite ( STDOUT, "Enter a command(-e to exit; --help for help): " );
@@ -11,13 +12,14 @@ do {
 	
 	switch ($input) {
 		case "--file" :
-			showFileName ();
+			parseData ();
+			insertData ();
 			break;
 		case "--create_table" :
 			createTable ();
 			break;
 		case "--dry_run" :
-			dryRun ();
+			parseData ();
 			break;
 		case "-u" :
 			MySQLUsername ();
@@ -37,27 +39,72 @@ do {
 			echo "Undefined command, please enter again.\n";
 	}
 } while ( $input != "e" );
-function showFileName() {
-	$myFile = fopen ( "./users.csv", "r" ) or die ( "Unable to open file." );
-	while ( ! feof ( $myFile ) ) {
-		$row = fgets ( $myFile );
-		global $users;
-		$users [] = explode ( ",", $row );
-	}
-	print_r ( $users );
-	fclose ( $myFile );
-}
-function createTable() {
-	global $usr, $pwd, $host;
+function connection() {
+	global $usr, $pwd, $host, $con;
 	// if ($usr != null && $host != null) {
 	// $con = mysqli_connect ( $host, $usr, $pwd );
 	if (1) {
 		$con = mysqli_connect ( "localhost:3306", "root", "root" );
 		if (! $con) {
-			die ( 'Failed to connect to MySql: ' . mysql_error () );
+			fwrite ( STDOUT, "Failed to connect to MySql: " . mysql_error () );
+			return false;
 		}
 		echo "Successfully connected.\n";
+		return true;
+	}
+	else 
+		return false;
+}
+function parseData() {
+	fwrite ( STDOUT, "Enter file name: " );
+	
+	$input = trim ( fgets ( STDIN ) );
+	if (! ($myFile = fopen ( "./" . $input, "r" ))) {
+		fwrite ( STDOUT, "Unable to open file.\n" );
+	} else {
+		while ( ! feof ( $myFile ) ) {
+			$row = fgets ( $myFile );
+			global $users;
+			$users [] = explode ( ",", $row );
+		}
+		fclose ( $myFile );
 		
+		for($i = 1; $i < count ( $users ); $i ++) {
+			$users [$i] [0] = ucwords ( strtolower ( $users [$i] [0] ) );
+			$users [$i] [1] = ucwords ( strtolower ( $users [$i] [1] ) );
+			$users [$i] [2] = strtolower ( $users [$i] [2] );
+		}
+		fwrite ( STDOUT, "File successfully parsed.\n" );
+	}
+}
+function insertData() {
+	if (connection ()) {
+		global $con, $users;
+		$sql = "SELECT name FROM users";
+		$result = mysqli_query ( $con, $sql );
+		print_r ( $result );
+		echo mysqli_num_rows ( $result );
+		if ($result == null) {
+			for($i = 1; $i < count ( $users ); $i ++) {
+				$users [$i] [2] = trim ( $users [$i] [2] );
+				if (filter_var ( $users [$i] [2], FILTER_VALIDATE_EMAIL )) {
+					mysqli_select_db ( $con, "my_db" );
+					$sql = "INSERT INTO users (name, surname, email) VALUES ('" . addslashes ( $users [$i] [0] ) . "', '" . addslashes ( $users [$i] [1] ) . "', '" . addslashes ( $users [$i] [2] ) . "')";
+					if (! mysqli_query ( $con, $sql )) {
+						fwrite ( STDOUT, "Error to insert data: " . mysqli_error ( $con ) . ".\n" );
+					}
+				} else {
+					fwrite ( STDOUT, $users [$i] [2] . " is not a valid email address.\n" );
+				}
+			}
+		} else {
+			fwrite ( STDOUT, "Table 'users' is not exist, please create table first.\n" );
+		}
+	}
+}
+function createTable() {
+	if (connection ()) {
+		global $con;
 		if (mysqli_query ( $con, "CREATE DATABASE my_db" )) {
 			fwrite ( STDOUT, "Database created.\n" );
 		} else {
@@ -75,25 +122,6 @@ function createTable() {
 		mysqli_close ( $con );
 	} else
 		fwrite ( STDOUT, "Please enter MySql username, password and host address first!\n" );
-}
-function dryRun() {
-	$myFile = fopen ( "./users.csv", "r" ) or die ( "Unable to open file." );
-	while ( ! feof ( $myFile ) ) {
-		$row = fgets ( $myFile );
-		global $users;
-		$users [] = explode ( ",", trim ( $row ) );
-	}
-	fclose ( $myFile );
-	
-	for($i = 0; $i < count ( $users ); $i ++) {
-		echo ucwords ( strtolower ( $users [$i] [0] ) );
-		echo ucwords ( strtolower ( $users [$i] [1] ) );
-		if (preg_match ( "/([\D]+\@{1}[\w]+\.{1}[\w]+)/", strtolower ( $users [$i] [2] ) )) {
-			echo strtolower ( $users [$i] [2] ) . "\n";
-		} else {
-			fwrite ( STDOUT, "\n" . $users [$i] [2] . " is not a valid email address.\n" );
-		}
-	}
 }
 function MySQLUsername() {
 	fwrite ( STDOUT, "Please enter MySql username: " );
